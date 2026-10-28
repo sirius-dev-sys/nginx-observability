@@ -1,0 +1,45 @@
+# Источники: два файла логов nginx
+[sources.nginx_access]
+type = "file"
+include = ["/var/log/nginx/access.log"]
+
+[sources.nginx_error]
+type = "file"
+include = ["/var/log/nginx/error.log"]
+
+# Разбор access.log (формат combined) + поле log_type
+[transforms.access_parse]
+type = "remap"
+inputs = ["nginx_access"]
+source = '''
+parsed, err = parse_nginx_log(.message, "combined")
+if err == null {
+  .client = parsed.client
+  .request = parsed.request
+  .status = parsed.status
+  .size = parsed.size
+  .agent = parsed.agent
+}
+.log_type = "access"
+'''
+
+# Разбор error.log + поле log_type
+[transforms.error_parse]
+type = "remap"
+inputs = ["nginx_error"]
+source = '''
+parsed, err = parse_nginx_log(.message, "error")
+if err == null {
+  .severity = parsed.severity
+  .error_message = parsed.message
+}
+.log_type = "error"
+'''
+
+# Отправка в Loki, метка job="vector", тело в JSON
+[sinks.loki]
+type = "loki"
+inputs = ["access_parse", "error_parse"]
+endpoint = "http://loki:3100"
+encoding.codec = "json"
+labels.job = "vector"
