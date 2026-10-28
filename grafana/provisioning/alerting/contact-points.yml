@@ -1,0 +1,17 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: "Email alerts (code)"
+    receivers:
+      - uid: email-alerts-code
+        type: email
+        settings:
+          addresses: "${GF_SMTP_USER}"
+          singleEmail: false
+policies:
+  - orgId: 1
+    receiver: "Email alerts (code)"
+    group_by: ["alertname"]
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 4h
